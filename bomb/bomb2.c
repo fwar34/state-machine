@@ -245,4 +245,136 @@ static void *keyBuffer[10];             ///< 队列缓冲区
 /**
  * @brief 炸弹初始状态处理函数
  * 
- * 初始化炸弹的各项
+ * 初始化炸弹的各项参数并进入设置状态
+ * 
+ * @param me 指向状态表对象的指针
+ */
+static void Bomb2Initial(StateTable *me)
+{
+    Bomb2 *bomb2 = (Bomb2 *)me;
+    // 设置初始超时时间
+    bomb2->timeout = BOMB2_INIT_TIMEOUT;
+    // 设置解锁密码为0xD (二进制1101)
+    bomb2->passwd = 0xD;
+    // 转换到设置状态
+    TRAN(BOMB_STATE_SETTING);
+    printf("Bomb2Initial...\n");
+}
+
+/**
+ * @brief 炸弹主运行线程函数
+ * 
+ * 处理事件分发和状态机执行
+ * 
+ * @param arg 线程参数（未使用）
+ * @return 线程返回值
+ */
+void* Bomb2Run(void *arg)
+{
+    UNUSE(arg);
+    // 初始化状态机
+    StateTableInit((StateTable *)&g_bomb2);
+
+    char key;
+    // 无限循环处理事件
+    for (;;) {
+        bool isTimeout = false;
+        // 从队列中获取按键或超时
+        key = (char)(uintptr_t)QueueDequeueWithTimeout(&keyQueue, TICK_INTERVAL_100MS, &isTimeout);
+        
+        if (isTimeout) {
+            // 超时情况：发送滴答事件
+            static TickEvent tickEvent = {{BOMB_SIGNAL_TICK}, 0};
+            // 更新精细时间计数器（0-9循环）
+            if (++tickEvent.fineTime == 10) {
+                tickEvent.fineTime = 0;
+            }
+            // 分发滴答事件
+            StateTableDispatch((StateTable *)&g_bomb2, (Event *)&tickEvent);
+        } else {
+            // 按键情况：创建对应事件并分发
+            static const Event upEvent = {BOMB_SIGNAL_UP};
+            static const Event downEvent = {BOMB_SIGNAL_DOWN};
+            static const Event armEvent = {BOMB_SIGNAL_ARM};
+            static const Event *e = NULL;
+        
+            // 根据按键类型选择对应事件
+            switch (key)
+            {
+            case 'u':
+                e = &upEvent;
+                break;
+            case 'd':
+                e = &downEvent;
+                break;
+            case 'a':
+                e = &armEvent;
+                break;
+            case '\33':  // ESC键退出
+                return NULL;
+            default:
+                break;
+            }
+
+            // 如果有有效事件，则分发
+            if (e != NULL) {
+                StateTableDispatch((StateTable *)&g_bomb2, e);
+                e = NULL;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * @brief 主函数
+ * 
+ * 程序入口点，初始化系统并启动炸弹线程
+ * 
+ * @return 程序退出码
+ */
+int main()
+{
+    // 初始化炸弹状态机
+    StateTableCtor((StateTable *)&g_bomb2, &stateTable[0][0], STATE_NUM, SIGNAL_NUM, Bomb2Initial);
+    // 初始化键盘输入队列
+    QueueCtor(&keyQueue, keyBuffer, 10);
+
+    // 创建炸弹运行线程
+    pthread_t bomb2Thread;
+    pthread_create(&bomb2Thread, NULL, Bomb2Run, NULL);
+
+    // 主线程处理键盘输入
+    bool bombRunning = true;
+    while (bombRunning) {
+        // 获取键盘输入
+        switch (getch())
+        {
+        case 'u':
+            // UP键入队
+            QueueEnqueue(&keyQueue, (void *)'u');
+            break;
+        case 'd':
+            // DOWN键入队
+            QueueEnqueue(&keyQueue, (void *)'d');
+            break;
+        case 'a':
+            // ARM键入队
+            QueueEnqueue(&keyQueue, (void *)'a');
+            break;
+        case '\33':  // ESC键退出程序
+            bombRunning = false;
+            QueueEnqueue(&keyQueue, (void *)'\33');
+            break;
+        default:
+            break;
+        }
+    }
+    
+    // 等待炸弹线程结束
+    pthread_join(bomb2Thread, NULL);
+    printf("main exit\n");
+
+    return 0;
+}

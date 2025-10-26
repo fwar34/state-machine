@@ -13,6 +13,10 @@
 #include <pthread.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 /**
  * @brief 同步队列结构体
  * 
@@ -80,5 +84,9 @@ void *QueueDequeueWithTimeout(SyncQueue *me, uint32_t timeoutMs, bool *isTimeout
  * @return true 队列为空，false 队列不为空
  */
 bool QueueIsEmpty(SyncQueue *me);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif // !SYNC_QUEUE_H
