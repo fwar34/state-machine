@@ -5,6 +5,8 @@ project(bomb)
 set(BOMB2_SRC statetbl.c sync_queue.c)
 set(CMAKE_BUILD_TYPE Debug)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 add_executable(bomb2 bomb2.c ${BOMB2_SRC})
 target_compile_options(bomb2 PRIVATE -Wall -Wextra -pthread)
 
