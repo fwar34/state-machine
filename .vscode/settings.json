@@ -1,6 +1,8 @@
 {
     "files.associations": {
         "statetbl.h": "c",
-        "pthread.h": "c"
+        "pthread.h": "c",
+        "variant": "cpp",
+        "thread": "cpp"
     }
 }
