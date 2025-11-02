@@ -256,8 +256,4 @@ int main()
     printf("main exit\n");
 
     return 0;
-}static void *keyBuffer[10]; // 这里注意，一定要和syncqueue要求的数组元素类型（元素长度）匹配，
-                            // 否则QueueEnqueue会给单个元素可能赋值长度更长的元素导致数组越界，
-                            // 比如 static char keyBuffer[10]; QueueCtor(&keyQueue, (void **)&keyBuffer, 10);
-                            // 这样QueueEnqueue会给元素数据char赋值void *指针类型的值，
-                            // 最终可能会有数组越界，没有越界的时候也会导致数据数据混乱
+}
